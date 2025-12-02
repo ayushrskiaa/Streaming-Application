@@ -6,15 +6,11 @@ import { authMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
-
-if (!JWT_SECRET) {
-  console.error("JWT_SECRET is not set. Please add it to your backend .env file.");
-}
-
-const createToken = (user) =>
-  jwt.sign(
+const createToken = (user) => {
+  const JWT_SECRET = process.env.JWT_SECRET;
+  const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+  
+  return jwt.sign(
     {
       userId: user._id,
       role: user.role,
@@ -23,6 +19,7 @@ const createToken = (user) =>
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
+};
 
 // POST /auth/register
 router.post("/register", async (req, res, next) => {

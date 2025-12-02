@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext.jsx";
+import { useAuth } from "../hooks/useAuth";
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -9,11 +9,12 @@ export function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tenantId, setTenantId] = useState("");
+  const [role, setRole] = useState("editor");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await register({ name, email, password, tenantId });
+      await register({ name, email, password, tenantId, role });
       navigate("/dashboard");
     } catch {
       // error is already handled in context
@@ -68,7 +69,22 @@ export function RegisterPage() {
               onChange={(e) => setTenantId(e.target.value)}
               required
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-0 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/40"
+              placeholder="e.g., company1"
             />
+            <p className="text-xs text-slate-500 mt-1">Users with the same tenant ID can collaborate</p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-slate-200">Role</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              required
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-0 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/40"
+            >
+              <option value="viewer">Viewer - Read-only access</option>
+              <option value="editor">Editor - Upload & manage videos</option>
+              <option value="admin">Admin - Full system access</option>
+            </select>
           </div>
           {error && <p className="text-sm text-rose-300">{error}</p>}
           <button

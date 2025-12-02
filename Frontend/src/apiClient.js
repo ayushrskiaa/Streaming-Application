@@ -8,8 +8,11 @@ if (!API_BASE_URL) {
 export async function apiRequest(path, options = {}) {
   const url = `${API_BASE_URL}${path}`;
 
+  const token = localStorage.getItem("token");
+  
   const headers = {
     "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
     ...(options.headers || {}),
   };
 

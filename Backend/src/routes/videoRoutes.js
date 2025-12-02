@@ -1,7 +1,7 @@
 import express from "express";
 import { upload } from "../config/multer.js";
 import { Video } from "../models/Video.js";
-import { authMiddleware } from "../middleware/auth.js";
+import { authMiddleware, requireRoles } from "../middleware/auth.js";
 import path from "path";
 import fs from "fs";
 
@@ -10,8 +10,8 @@ const router = express.Router();
 // All routes require authentication
 router.use(authMiddleware);
 
-// POST /videos/upload - Upload a new video
-router.post("/upload", upload.single("video"), async (req, res, next) => {
+// POST /videos/upload - Upload a new video (Editor and Admin only)
+router.post("/upload", requireRoles("editor", "admin"), upload.single("video"), async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No video file uploaded" });
@@ -40,8 +40,14 @@ router.post("/upload", upload.single("video"), async (req, res, next) => {
       sensitivityStatus: "unknown",
     });
 
-    // TODO: Trigger video processing pipeline
-    // This will be implemented in the next step
+    // Trigger video processing pipeline
+    const videoProcessor = req.app.get("videoProcessor");
+    if (videoProcessor) {
+      // Start processing asynchronously (don't wait for completion)
+      videoProcessor.processVideo(video._id.toString()).catch((err) => {
+        console.error("Error in video processing:", err);
+      });
+    }
 
     res.status(201).json({
       message: "Video uploaded successfully",
@@ -166,13 +172,8 @@ router.get("/:id", async (req, res, next) => {
 });
 
 // DELETE /videos/:id - Delete a video (Editor and Admin only)
-router.delete("/:id", async (req, res, next) => {
+router.delete("/:id", requireRoles("editor", "admin"), async (req, res, next) => {
   try {
-    // Only editors and admins can delete
-    if (req.user.role === "viewer") {
-      return res.status(403).json({ message: "Access denied. Insufficient permissions." });
-    }
-
     const video = await Video.findById(req.params.id);
 
     if (!video) {
@@ -198,6 +199,45 @@ router.delete("/:id", async (req, res, next) => {
     await Video.findByIdAndDelete(req.params.id);
 
     res.json({ message: "Video deleted successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /videos/:id/reprocess - Retry processing for a failed video (Editor and Admin only)
+router.post("/:id/reprocess", requireRoles("editor", "admin"), async (req, res, next) => {
+  try {
+    const video = await Video.findById(req.params.id);
+
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    // Check tenant isolation
+    if (video.tenantId !== req.user.tenantId) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // Editors can only reprocess their own videos, admins can reprocess any
+    if (req.user.role === "editor" && video.uploadedBy.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Access denied. You can only reprocess your own videos." });
+    }
+
+    // Reset video status
+    await Video.findByIdAndUpdate(req.params.id, {
+      status: "pending",
+      processingProgress: 0,
+    });
+
+    // Trigger processing
+    const videoProcessor = req.app.get("videoProcessor");
+    if (videoProcessor) {
+      videoProcessor.processVideo(video._id.toString()).catch((err) => {
+        console.error("Error in video reprocessing:", err);
+      });
+    }
+
+    res.json({ message: "Video reprocessing started" });
   } catch (err) {
     next(err);
   }

@@ -1,15 +1,26 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/User.js";
 
-export const authMiddleware = async (req, res, next) => {
+/**
+ * Auth middleware that supports both header and query token
+ * Useful for streaming endpoints where query params are easier than headers
+ */
+export const streamAuthMiddleware = async (req, res, next) => {
   try {
     const JWT_SECRET = process.env.JWT_SECRET;
     const authHeader = req.headers.authorization;
     let token = null;
 
+    // Try to get token from Authorization header first
     if (authHeader && authHeader.startsWith("Bearer ")) {
       token = authHeader.split(" ")[1];
-    } else if (req.cookies && req.cookies.token) {
+    } 
+    // Then try query parameter (for direct video links)
+    else if (req.query.token) {
+      token = req.query.token;
+    } 
+    // Finally try cookies
+    else if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
     }
 
@@ -39,17 +50,3 @@ export const authMiddleware = async (req, res, next) => {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
-
-export const requireRoles =
-  (...allowedRoles) =>
-  (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Forbidden: insufficient role" });
-    }
-    next();
-  };
-
-
