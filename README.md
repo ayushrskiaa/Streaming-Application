@@ -2,7 +2,7 @@
 
 A full-stack video streaming platform with role-based access control, real-time processing, and multi-tenant support.
 
-🔗 **Live Demo**: [Frontend](https://streaming-application-delta.vercel.app) | [Backend API](https://streaming-application-production.up.railway.app)
+🔗 **Live Demo**: [Frontend](https://streaming-application-git-main-ayushrskiaa09s-projects.vercel.app/) | [Backend API](https://streaming-application-production.up.railway.app)
 
 ## 🚀 Features
 
