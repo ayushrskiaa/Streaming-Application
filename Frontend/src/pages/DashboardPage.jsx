@@ -7,7 +7,7 @@ import { apiRequest } from "../apiClient";
 export function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { isConnected, videoUpdates } = useSocket();
+  const { videoUpdates } = useSocket();
   
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -196,10 +196,10 @@ export function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <div className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-400" : "bg-red-400"}`} />
               <span className="text-xs text-slate-400">{isConnected ? "Connected" : "Disconnected"}</span>
-            </div>
+            </div> */}
             <button
               onClick={handleLogout}
               className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-700"
