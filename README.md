@@ -2,32 +2,45 @@
 
 A full-stack video streaming platform with role-based access control, real-time processing, and multi-tenant support.
 
+🔗 **Live Demo**: [Frontend](https://streaming-application-delta.vercel.app) | [Backend API](https://streaming-application-production.up.railway.app)
+
 ## 🚀 Features
 
-- **User Authentication & Authorization**: JWT-based authentication with role-based access control (Admin, Creator, Viewer)
+- **User Authentication & Authorization**: JWT-based authentication with role-based access control (Admin, Content Manager, Viewer)
 - **Video Upload & Processing**: Upload videos with automatic thumbnail generation using FFmpeg
-- **Real-time Updates**: Socket.io integration for live video processing status updates
-- **Video Streaming**: Efficient video streaming with HTTP range requests
-- **Multi-tenant Support**: Tenant isolation for secure data segregation
-- **Responsive UI**: Modern React frontend with Tailwind CSS
+- **Real-time Updates**: Socket.io integration for live video processing status updates (0% → 100% progress)
+- **Video Streaming**: Efficient video streaming with HTTP range requests support
+- **Multi-tenant Support**: Complete tenant isolation for secure data segregation between organizations
+- **Content Moderation**: Automated safety checks with mock AI moderation (95% safe score)
+- **Responsive UI**: Modern React frontend with Tailwind CSS and real-time WebSocket updates
+- **Production Ready**: Deployed on Railway (Backend) + Vercel (Frontend) with MongoDB Atlas
 
 ## 🛠️ Tech Stack
 
 ### Backend
 - Node.js 22.11.0
 - Express 4.21.2
-- MongoDB (Mongoose 8.9.0)
+- MongoDB (Mongoose 8.9.4)
 - Socket.io 4.8.1
-- JWT Authentication
-- FFmpeg for video thumbnail extraction
-- Multer for file uploads
+- JWT Authentication (jsonwebtoken 9.0.2)
+- bcryptjs 2.4.3 for password hashing
+- FFmpeg 8.0.1 for video thumbnail extraction
+- Multer 1.4.5-lts.1 for file uploads
+- cookie-parser 1.4.7
+- cors 2.8.5
 
 ### Frontend
-- React 19.2.0
-- Vite 7.2.4
+- React 19.0.0
+- Vite 6.0.5
 - Tailwind CSS 3.4.18
 - Socket.io-client 4.8.1
-- React Router DOM 7.9.6
+- React Router DOM 7.1.1
+- Axios 1.7.9
+
+### Deployment
+- **Backend**: Railway (Nixpacks with FFmpeg)
+- **Frontend**: Vercel
+- **Database**: MongoDB Atlas
 
 ## 📋 Prerequisites
 
@@ -128,9 +141,14 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for Ra
 
 ## 🎯 User Roles
 
-- **Admin**: Full access to all features, user management
-- **Creator**: Upload and manage own videos
-- **Viewer**: View and stream available videos
+| Feature | Viewer | Content Manager | Admin |
+|---------|--------|-----------------|-------|
+| View videos | ✅ (own tenant) | ✅ (own tenant) | ✅ (all tenants) |
+| Stream videos | ✅ | ✅ | ✅ |
+| Upload videos | ❌ | ✅ | ✅ |
+| Edit videos | ❌ | ✅ (own tenant) | ✅ (all tenants) |
+| Delete videos | ❌ | ✅ (own tenant) | ✅ (all tenants) |
+| Manage users | ❌ | ❌ | ✅ |
 
 ## 📁 Project Structure
 
@@ -138,29 +156,40 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for Ra
 Streaming-Application/
 ├── Backend/
 │   ├── src/
-│   │   ├── server.js           # Main server file
+│   │   ├── server.js           # Main Express server with Socket.io
 │   │   ├── middleware/
-│   │   │   └── auth.js         # JWT authentication
+│   │   │   └── auth.js         # JWT authentication middleware
 │   │   ├── models/
-│   │   │   └── User.js         # User & Video schemas
-│   │   └── routes/
-│   │       └── authRoutes.js   # Auth & video routes
-│   ├── uploads/                # Video storage
+│   │   │   ├── User.js         # User schema with RBAC
+│   │   │   └── Video.js        # Video metadata schema
+│   │   ├── routes/
+│   │   │   ├── authRoutes.js   # Authentication endpoints
+│   │   │   └── videoRoutes.js  # Video CRUD endpoints
+│   │   └── services/
+│   │       ├── videoProcessor.js  # FFmpeg thumbnail generation
+│   │       └── mockModerator.js   # Content safety checks
+│   ├── uploads/                # Video file storage
 │   ├── package.json
-│   └── nixpacks.toml          # Railway deployment config
+│   ├── nixpacks.toml          # Railway FFmpeg configuration
+│   ├── Dockerfile.backup      # Docker config (not in use)
+│   └── .env.example           # Environment variable template
 ├── Frontend/
 │   ├── src/
-│   │   ├── App.jsx            # Main app component
-│   │   ├── apiClient.js       # API configuration
+│   │   ├── App.jsx            # Main app component with routing
+│   │   ├── apiClient.js       # Axios instance with auth
 │   │   ├── auth/
-│   │   │   ├── AuthContext.jsx
-│   │   │   └── ProtectedRoute.jsx
+│   │   │   ├── AuthContext.jsx      # Global auth state
+│   │   │   └── ProtectedRoute.jsx   # Route guard component
 │   │   └── pages/
-│   │       ├── LoginPage.jsx
-│   │       ├── RegisterPage.jsx
-│   │       └── DashboardPage.jsx
+│   │       ├── LoginPage.jsx        # Login form
+│   │       ├── RegisterPage.jsx     # Registration form
+│   │       └── DashboardPage.jsx    # Main video dashboard
+│   ├── public/
 │   ├── package.json
-│   └── vite.config.js
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   └── .env.example           # Environment variable template
+├── DEPLOYMENT.md              # Comprehensive deployment guide
 └── README.md
 ```
 
@@ -185,28 +214,37 @@ Streaming-Application/
 
 ## 🎥 Features in Detail
 
-### Video Upload
-- Multi-part form data upload
-- Automatic thumbnail generation at 2-second mark
-- Real-time upload progress
-- FFmpeg integration for video processing
+### Video Upload & Processing Pipeline
+1. **Upload**: Client uploads video via multipart/form-data
+2. **Storage**: Multer saves file to `uploads/` directory with unique filename
+3. **Database**: Video metadata stored in MongoDB with tenant isolation
+4. **Thumbnail Generation**: FFmpeg extracts frame at 2 seconds → JPEG → base64 data URL
+5. **Content Moderation**: Mock AI safety analysis (95% safe score)
+6. **Real-time Progress**: Socket.io broadcasts processing status (0% → 20% → 40% → 60% → 80% → 100%)
+7. **Ready**: Video available for streaming with thumbnail preview
 
 ### Real-time Processing
-- Socket.io event-driven updates
-- Live thumbnail generation status
-- Instant UI updates on video processing
+- Socket.io event-driven architecture
+- Live thumbnail generation status updates
+- Instant UI updates without page refresh
+- Per-tenant Socket.io rooms for data isolation
+- Progress tracking: "Starting video analysis..." → "Processing complete!"
 
-### Streaming
-- HTTP range request support
-- Efficient video buffering
-- Responsive video player
+### Video Streaming
+- HTTP range request support for efficient seeking
+- Partial content delivery (206 status code)
+- Compatible with HTML5 video player
+- Bandwidth-efficient buffering
+- Responsive playback controls
 
-### Security
-- JWT-based authentication
-- Role-based access control (RBAC)
-- Protected routes
-- Tenant isolation
-- CORS configuration
+### Security & Multi-tenancy
+- JWT-based authentication with HTTP-only cookies
+- Role-based access control (RBAC) middleware
+- Protected routes with tenant verification
+- Complete tenant data isolation in database queries
+- CORS configuration for production deployment
+- Password hashing with bcrypt (10 rounds)
+- Input validation on all endpoints
 
 ## 🐛 Troubleshooting
 
@@ -228,17 +266,23 @@ Streaming-Application/
 ## 📝 API Endpoints
 
 ### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/validate` - Validate JWT token
+- `POST /auth/register` - Register new user
+- `POST /auth/login` - User login
+- `POST /auth/logout` - User logout
+- `GET /auth/me` - Get current user info
 
 ### Videos
-- `POST /api/videos/upload` - Upload video (Creator/Admin)
-- `GET /api/videos` - Get all videos
-- `GET /api/videos/:id` - Get video details
-- `GET /api/videos/:id/stream` - Stream video
-- `DELETE /api/videos/:id` - Delete video (Owner/Admin)
+- `POST /videos/upload` - Upload video (Content Manager/Admin)
+- `GET /videos` - Get all videos (filtered by tenant)
+- `GET /videos/:id` - Get video details
+- `GET /videos/:id/stream` - Stream video with range support
+- `PATCH /videos/:id` - Update video metadata (Owner/Admin)
+- `DELETE /videos/:id` - Delete video (Owner/Admin)
+
+### WebSocket Events
+- `user:joined` - User connected to tenant room
+- `video:progress` - Real-time processing progress (0-100%)
+- `video:uploaded` - New video uploaded notification
 
 ## 🤝 Contributing
 
