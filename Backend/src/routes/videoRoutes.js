@@ -89,11 +89,10 @@ router.get("/", async (req, res, next) => {
       query.sensitivityStatus = sensitivityStatus;
     }
 
-    // Viewers can only see their own videos
-    // Editors and Admins can see all videos in their tenant
-    if (req.user.role === "viewer") {
-      query.uploadedBy = req.user.userId;
-    }
+    // All roles can see all videos in their tenant
+    // Viewers can view but cannot upload/delete
+    // Editors can upload and delete own videos
+    // Admins can upload and delete any video
 
     const videos = await Video.find(query)
       .sort(sort)
@@ -140,10 +139,8 @@ router.get("/:id", async (req, res, next) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // Viewers can only access their own videos
-    if (req.user.role === "viewer" && video.uploadedBy._id.toString() !== req.user.userId) {
-      return res.status(403).json({ message: "Access denied" });
-    }
+    // All roles can view videos in their tenant
+    // Access control is handled at upload/delete level, not viewing
 
     res.json({
       video: {
