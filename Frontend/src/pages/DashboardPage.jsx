@@ -43,19 +43,37 @@ export function DashboardPage() {
   useEffect(() => {
     if (videoUpdates.length > 0) {
       const latestUpdate = videoUpdates[videoUpdates.length - 1];
-      setVideos((prev) =>
-        prev.map((v) =>
-          v.id === latestUpdate.videoId
-            ? {
-                ...v,
-                status: latestUpdate.status,
-                processingProgress: latestUpdate.progress,
-                sensitivityStatus: latestUpdate.sensitivityStatus,
-                thumbnail: latestUpdate.thumbnail || v.thumbnail,
-              }
-            : v
-        )
-      );
+      
+      setVideos((prev) => {
+        const existingIndex = prev.findIndex((v) => v.id === latestUpdate.videoId);
+        
+        if (existingIndex >= 0) {
+          // Update existing video
+          return prev.map((v) =>
+            v.id === latestUpdate.videoId
+              ? {
+                  ...v,
+                  status: latestUpdate.status,
+                  processingProgress: latestUpdate.progress,
+                  sensitivityStatus: latestUpdate.sensitivityStatus || v.sensitivityStatus,
+                  thumbnail: latestUpdate.thumbnail || v.thumbnail,
+                  duration: latestUpdate.duration || v.duration,
+                }
+              : v
+          );
+        } else {
+          // Video not in list yet, fetch to get it
+          if (latestUpdate.status === "processing" || latestUpdate.progress > 0) {
+            fetchVideos();
+          }
+          return prev;
+        }
+      });
+      
+      // If video just completed, log it
+      if (latestUpdate.status === "completed") {
+        console.log("Video processing completed:", latestUpdate.title);
+      }
     }
   }, [videoUpdates]);
 
@@ -110,12 +128,15 @@ export function DashboardPage() {
       xhr.addEventListener("load", () => {
         if (xhr.status === 201) {
           const data = JSON.parse(xhr.responseText);
+          // Add the new video to the list
           setVideos((prev) => [data.video, ...prev]);
           setTitle("");
           setDescription("");
           setVideoFile(null);
           setUploadProgress(0);
-          document.getElementById("videoInput").value = "";
+          if (document.getElementById("videoInput")) {
+            document.getElementById("videoInput").value = "";
+          }
         } else {
           const error = JSON.parse(xhr.responseText);
           setError(error.message || "Upload failed");

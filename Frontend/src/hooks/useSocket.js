@@ -15,18 +15,25 @@ export const useSocket = () => {
         socket.disconnect();
         socket = null;
       }
+      setIsConnected(false);
       return;
     }
 
     // Initialize socket connection
     const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
     
-    if (!socket) {
+    if (!socket || !socket.connected) {
+      if (socket) {
+        socket.disconnect();
+      }
+      
       socket = io(socketUrl, {
         transports: ["websocket", "polling"],
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 10,
         reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000,
       });
 
       socket.on("connect", () => {
@@ -41,14 +48,26 @@ export const useSocket = () => {
         });
       });
 
-      socket.on("disconnect", () => {
-        console.log("Socket disconnected");
+      socket.on("disconnect", (reason) => {
+        console.log("Socket disconnected:", reason);
         setIsConnected(false);
       });
 
       socket.on("connect_error", (error) => {
         console.error("Socket connection error:", error);
         setIsConnected(false);
+      });
+
+      socket.on("reconnect", (attemptNumber) => {
+        console.log("Socket reconnected after", attemptNumber, "attempts");
+        setIsConnected(true);
+        
+        // Rejoin rooms after reconnection
+        socket.emit("join", {
+          userId: user.id,
+          tenantId: user.tenantId,
+          role: user.role,
+        });
       });
 
       // Listen for video processing updates
@@ -59,12 +78,7 @@ export const useSocket = () => {
     }
 
     return () => {
-      if (socket) {
-        socket.off("connect");
-        socket.off("disconnect");
-        socket.off("connect_error");
-        socket.off("video:progress");
-      }
+      // Don't disconnect on unmount, keep socket alive
     };
   }, [user]);
 

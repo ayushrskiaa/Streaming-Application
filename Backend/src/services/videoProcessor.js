@@ -185,6 +185,8 @@ class VideoProcessor {
       status,
       message,
       sensitivityStatus: sensitivityStatus || video.sensitivityStatus,
+      thumbnail: video.thumbnail || null,
+      duration: video.duration || 0,
       timestamp: new Date(),
     };
 
