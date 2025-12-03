@@ -103,9 +103,12 @@ npm install
 3. Create `.env` file:
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/video-streaming
+MONGO_URI=mongodb+srv://ayushkumar2263:PrIh9CitJzTkdaZ7@videoprocessing.u1zcoic.mongodb.net/
 CLIENT_ORIGIN=http://localhost:5173
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_SECRET=some_super_strong_secret_here
+JWT_EXPIRES_IN=10000d
+DEPLOYMENT_ORIGIN=https://streaming-application-delta.vercel.app
+FFMPEG_PATH=C:\ffmpeg\bin\ffmpeg.exe
 ```
 
 4. Create uploads directory:
@@ -141,8 +144,9 @@ npm install
 
 3. Create `.env` file:
 ```env
-VITE_API_URL=http://localhost:5000
-VITE_SOCKET_URL=http://localhost:5000
+VITE_DEV_SERVER_PORT=5173
+VITE_API_URL=https://streaming-application-production.up.railway.app/
+VITE_SOCKET_URL=https://streaming-application-production.up.railway.app/
 ```
 
 4. Start the development server:
