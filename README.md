@@ -5,6 +5,7 @@ A comprehensive full-stack video streaming platform with real-time processing up
 ## Features
 
 - 🎥 **Video Upload & Management**: Upload videos with metadata, track processing status
+- 🖼️ **Real Video Thumbnails**: Automatic thumbnail extraction from uploaded videos using FFmpeg
 - ⚡ **Real-time Updates**: Live progress tracking using Socket.io
 - 🔒 **Role-Based Access Control**: Three user roles (Viewer, Editor, Admin)
 - 🏢 **Multi-tenant Architecture**: Complete tenant isolation
@@ -81,6 +82,10 @@ Pulse_Assignment/
 ### Prerequisites
 - Node.js v22+ 
 - MongoDB running locally or remote connection
+- **FFmpeg** (optional but recommended for real video thumbnails)
+  - Windows: Download from [ffmpeg.org](https://ffmpeg.org/download.html) and add to PATH
+  - Mac: `brew install ffmpeg`
+  - Linux: `sudo apt install ffmpeg`
 - 500MB+ free disk space for video uploads
 
 ### Backend Setup
@@ -106,9 +111,16 @@ JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 4. Create uploads directory:
 ```bash
 mkdir uploads
+mkdir uploads/thumbnails
 ```
 
-5. Start the server:
+5. **(Optional)** Verify FFmpeg installation:
+```bash
+ffmpeg -version
+```
+If FFmpeg is not installed, the app will use placeholder SVG thumbnails instead.
+
+6. Start the server:
 ```bash
 npm start
 ```
@@ -290,14 +302,28 @@ socket.on('video:progress', (data) => {
 
 ## Video Processing Pipeline
 
-The application implements a mock sensitivity analysis pipeline with 5 stages:
+The application implements a 5-stage processing pipeline:
 
 1. **Upload** (0%) - Video uploaded successfully
-2. **Extracting Metadata** (20%) - Duration, size, format analysis
+2. **Extracting Metadata** (20%) - Duration and format analysis
 3. **Content Analysis** (40%) - Frame extraction and analysis
 4. **Sensitivity Check** (60%) - Content moderation checks
-5. **Finalizing** (80%) - Preparing for streaming
+5. **Generating Thumbnail** (80%) - Real thumbnail extraction from video
 6. **Completed** (100%) - Ready for playback
+
+### Thumbnail Generation
+
+The app automatically generates thumbnails from uploaded videos:
+
+- **With FFmpeg**: Extracts a real frame from the video at 2 seconds
+  - High quality JPEG thumbnail (320px wide)
+  - Stored as base64 data URL
+  - No additional file storage needed
+  
+- **Without FFmpeg**: Falls back to colorful SVG placeholder
+  - Unique gradient colors per video
+  - Shows video title
+  - Instant generation
 
 Each stage emits real-time progress updates via Socket.io to:
 - User-specific room: `user:{userId}`

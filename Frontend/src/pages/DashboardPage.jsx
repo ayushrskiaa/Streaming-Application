@@ -51,6 +51,7 @@ export function DashboardPage() {
                 status: latestUpdate.status,
                 processingProgress: latestUpdate.progress,
                 sensitivityStatus: latestUpdate.sensitivityStatus,
+                thumbnail: latestUpdate.thumbnail || v.thumbnail,
               }
             : v
         )
@@ -361,13 +362,27 @@ export function DashboardPage() {
                 {filteredVideos.map((video) => (
                   <div
                     key={video.id}
-                    className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 transition hover:border-slate-700"
+                    className="rounded-xl border border-slate-800 bg-slate-900/30 p-4 transition hover:border-slate-700 hover:bg-slate-900/50"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-medium text-slate-100">{video.title}</h3>
+                    <div className="flex items-start gap-4">
+                      {/* Thumbnail */}
+                      {video.thumbnail && (
+                        <div className="flex-shrink-0">
+                          <img
+                            src={video.thumbnail}
+                            alt={video.title}
+                            className="h-20 w-36 rounded-lg border border-slate-700 object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-slate-100">{video.title}</h3>
                         {video.description && (
-                          <p className="mt-1 text-sm text-slate-400">{video.description}</p>
+                          <p className="mt-1 text-sm text-slate-400 line-clamp-2">{video.description}</p>
                         )}
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${getStatusBadge(video.status)}`}>
@@ -384,9 +399,12 @@ export function DashboardPage() {
                               {Math.floor(video.duration / 60)}:{String(video.duration % 60).padStart(2, "0")}
                             </span>
                           )}
-                          <span className="text-xs text-slate-500">
-                            {video.views} views
-                          </span>
+                          {video.views > 0 && (
+                            <span className="text-xs text-slate-500">
+                              {video.views} views
+                            </span>
+                          )}
+
                         </div>
                         {(video.status === "processing" || video.status === "pending") && (
                           <div className="mt-3">
@@ -403,7 +421,8 @@ export function DashboardPage() {
                           </div>
                         )}
                       </div>
-                      <div className="ml-4 flex items-center gap-2">
+                      
+                      <div className="flex flex-shrink-0 items-center gap-2">
                         {video.status === "completed" && (
                           <a
                             href={`${import.meta.env.VITE_API_URL}/stream/${video.id}?token=${localStorage.getItem("token")}`}

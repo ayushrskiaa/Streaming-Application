@@ -114,6 +114,7 @@ router.get("/", async (req, res, next) => {
         processingProgress: v.processingProgress,
         uploadedBy: v.uploadedBy,
         views: v.views,
+        thumbnail: v.thumbnail,
         createdAt: v.createdAt,
         updatedAt: v.updatedAt,
       })),

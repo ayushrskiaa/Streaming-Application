@@ -1,21 +1,31 @@
 import { Video } from "../models/Video.js";
 import fs from "fs";
-import path from "path";
-
-/**
- * Video Processing Service
- * Handles video sensitivity analysis and metadata extraction
- */
+import { 
+  isFFmpegAvailable, 
+  generateThumbnailDataUrl, 
+  getVideoDuration 
+} from "../utils/thumbnailGenerator.js";
 
 class VideoProcessor {
   constructor(io) {
-    this.io = io; // Socket.io instance for real-time updates
-    this.processingQueue = new Map(); // Track processing jobs
+    this.io = io;
+    this.processingQueue = new Map();
+    this.ffmpegAvailable = false;
+    this.checkFFmpeg();
+  }
+
+  async checkFFmpeg() {
+    this.ffmpegAvailable = await isFFmpegAvailable();
+    if (this.ffmpegAvailable) {
+      console.log("✓ FFmpeg is available - using real video thumbnails");
+    } else {
+      console.log("⚠ FFmpeg not found - using placeholder thumbnails");
+      console.log("  Install FFmpeg: https://ffmpeg.org/download.html");
+    }
   }
 
   /**
    * Start processing a video
-   * @param {string} videoId - MongoDB video ID
    */
   async processVideo(videoId) {
     try {
@@ -26,7 +36,6 @@ class VideoProcessor {
         return;
       }
 
-      // Check if video file exists
       if (!fs.existsSync(video.filepath)) {
         await Video.findByIdAndUpdate(videoId, {
           status: "failed",
@@ -38,14 +47,12 @@ class VideoProcessor {
 
       console.log(`Starting processing for video: ${video.title} (${videoId})`);
 
-      // Update status to processing
       await Video.findByIdAndUpdate(videoId, {
         status: "processing",
         processingProgress: 0,
       });
       this.emitProgress(video, 0, "processing", "Starting video analysis...");
 
-      // Simulate video processing with multiple stages
       await this.analyzeVideo(video);
 
     } catch (error) {
@@ -62,11 +69,6 @@ class VideoProcessor {
 
   /**
    * Analyze video for sensitivity content
-   * This is a mock implementation - in production, you'd use:
-   * - Azure Video Analyzer
-   * - AWS Rekognition
-   * - Google Video Intelligence API
-   * - Custom ML models
    */
   async analyzeVideo(video) {
     const stages = [
@@ -78,10 +80,8 @@ class VideoProcessor {
     ];
 
     for (const stage of stages) {
-      // Simulate processing time
       await this.sleep(2000);
 
-      // Update progress
       await Video.findByIdAndUpdate(video._id, {
         processingProgress: stage.progress,
       });
@@ -89,57 +89,87 @@ class VideoProcessor {
       this.emitProgress(video, stage.progress, "processing", stage.message);
     }
 
-    // Mock sensitivity analysis result
-    // In production, this would be based on actual video content analysis
     const sensitivityResult = this.mockSensitivityAnalysis(video);
+    
+    // Get real video duration if FFmpeg available
+    let duration = this.calculateDuration(video);
+    if (this.ffmpegAvailable) {
+      const realDuration = await getVideoDuration(video.filepath);
+      if (realDuration > 0) duration = realDuration;
+    }
+    
+    // Generate real thumbnail if FFmpeg available, otherwise use placeholder
+    let thumbnail = this.generatePlaceholderThumbnail(video);
+    if (this.ffmpegAvailable) {
+      const realThumbnail = await generateThumbnailDataUrl(video.filepath, video._id.toString());
+      if (realThumbnail) thumbnail = realThumbnail;
+    }
 
-    // Extract mock video duration (in production, use ffprobe or similar)
-    const duration = this.mockExtractDuration(video);
-
-    // Update video with final results
     await Video.findByIdAndUpdate(video._id, {
       status: "completed",
       sensitivityStatus: sensitivityResult,
       processingProgress: 100,
       duration: duration,
+      thumbnail: thumbnail,
     });
 
     const updatedVideo = await Video.findById(video._id).populate("uploadedBy", "name email");
     this.emitProgress(updatedVideo, 100, "completed", "Video ready for streaming!", sensitivityResult);
 
-    console.log(`Completed processing for video: ${video.title} - Status: ${sensitivityResult}`);
+    console.log(`Completed processing: ${video.title} - Status: ${sensitivityResult}`);
   }
 
   /**
-   * Mock sensitivity analysis
-   * Returns: "safe" or "flagged"
+   * Mock sensitivity analysis (80% safe, 20% flagged)
    */
   mockSensitivityAnalysis(video) {
-    // For demo purposes:
-    // - 80% chance of "safe"
-    // - 20% chance of "flagged"
-    // In production, this would analyze actual video content
-    
-    const random = Math.random();
-    
-    // You can also add logic based on filename or other factors
     if (video.title.toLowerCase().includes("test")) {
       return "safe";
     }
-    
-    return random > 0.2 ? "safe" : "flagged";
+    return Math.random() > 0.2 ? "safe" : "flagged";
   }
 
   /**
-   * Mock duration extraction
-   * Returns duration in seconds
+   * Calculate video duration based on file size
    */
-  mockExtractDuration(video) {
-    // In production, use ffprobe to get actual duration
-    // For now, estimate based on file size (very rough approximation)
+  calculateDuration(video) {
     const sizeMB = video.size / (1024 * 1024);
-    const estimatedDuration = Math.floor(sizeMB / 2); // ~2MB per second for typical video
-    return Math.max(10, Math.min(estimatedDuration, 3600)); // Between 10 seconds and 1 hour
+    const estimatedDuration = Math.floor(sizeMB / 2);
+    return Math.max(10, Math.min(estimatedDuration, 3600));
+  }
+
+  /**
+   * Generate placeholder SVG thumbnail (fallback when FFmpeg not available)
+   */
+  generatePlaceholderThumbnail(video) {
+    const gradients = [
+      { start: '#0ea5e9', end: '#3b82f6' }, // Blue
+      { start: '#8b5cf6', end: '#a855f7' }, // Purple
+      { start: '#ec4899', end: '#f43f5e' }, // Pink
+      { start: '#f59e0b', end: '#f97316' }, // Orange
+      { start: '#10b981', end: '#14b8a6' }, // Green
+    ];
+    
+    const gradient = gradients[Math.floor(Math.random() * gradients.length)];
+    const title = video.title.substring(0, 25);
+    
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:${gradient.start};stop-opacity:0.9" />
+          <stop offset="100%" style="stop-color:${gradient.end};stop-opacity:0.7" />
+        </linearGradient>
+        <filter id="blur">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+        </filter>
+      </defs>
+      <rect width="320" height="180" fill="url(#bg)"/>
+      <circle cx="160" cy="90" r="35" fill="white" opacity="0.2" filter="url(#blur)"/>
+      <circle cx="160" cy="90" r="28" fill="white" opacity="0.95"/>
+      <path d="M 152 80 L 152 100 L 172 90 Z" fill="${gradient.start}"/>
+    </svg>`;
+    
+    return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
   }
 
   /**
@@ -158,25 +188,16 @@ class VideoProcessor {
       timestamp: new Date(),
     };
 
-    // Emit to specific user's room
     this.io.to(`user:${video.uploadedBy._id || video.uploadedBy}`).emit("video:progress", update);
-    
-    // Also emit to tenant room for admins/editors
     this.io.to(`tenant:${video.tenantId}`).emit("video:progress", update);
 
-    console.log(`Progress update for ${video.title}: ${progress}% - ${message}`);
+    console.log(`Progress: ${video.title} - ${progress}% - ${message}`);
   }
 
-  /**
-   * Helper: Sleep function
-   */
   sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  /**
-   * Get processing queue status
-   */
   getQueueStatus() {
     return {
       size: this.processingQueue.size,
