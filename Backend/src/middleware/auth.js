@@ -18,13 +18,10 @@ export const authMiddleware = async (req, res, next) => {
     }
 
     const payload = jwt.verify(token, JWT_SECRET);
-
     const user = await User.findById(payload.userId).select("-passwordHash");
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
-
-    // Attach user info to request
     req.user = {
       userId: user._id.toString(),
       email: user.email,

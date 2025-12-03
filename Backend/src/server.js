@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 
-// Load environment variables FIRST before importing any other modules
+// Load environment variables before importing modules that depend on them
 dotenv.config();
 
 import http from "http";
@@ -19,6 +19,7 @@ import VideoProcessor from "./services/videoProcessor.js";
 const PORT = process.env.PORT;
 const MONGO_URI = process.env.MONGO_URI;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
+const DEPLOYMENT_ORIGIN = process.env.DEPLOYMENT_ORIGIN;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!PORT || !MONGO_URI || !CLIENT_ORIGIN || !JWT_SECRET) {
@@ -35,9 +36,12 @@ const app = express();
 const server = http.createServer(app);
 
 // Socket.io setup
+const allowedOrigins = [CLIENT_ORIGIN];
+if (DEPLOYMENT_ORIGIN) allowedOrigins.push(DEPLOYMENT_ORIGIN);
+
 const io = new SocketIOServer(server, {
   cors: {
-    origin: CLIENT_ORIGIN,
+    origin: allowedOrigins,
     credentials: true,
   },
 });
@@ -73,7 +77,7 @@ app.set("videoProcessor", videoProcessor);
 // Global middlewares
 app.use(
   cors({
-    origin: CLIENT_ORIGIN,
+    origin: allowedOrigins,
     credentials: true,
   })
 );

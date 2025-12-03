@@ -1,10 +1,6 @@
 import { Video } from "../models/Video.js";
 import fs from "fs";
-import { 
-  isFFmpegAvailable, 
-  generateThumbnailDataUrl, 
-  getVideoDuration 
-} from "../utils/thumbnailGenerator.js";
+import { isFFmpegAvailable, generateThumbnailDataUrl, getVideoDuration } from "../utils/thumbnailGenerator.js";
 
 class VideoProcessor {
   constructor(io) {
@@ -23,10 +19,6 @@ class VideoProcessor {
       console.log("  Install FFmpeg: https://ffmpeg.org/download.html");
     }
   }
-
-  /**
-   * Start processing a video
-   */
   async processVideo(videoId) {
     try {
       const video = await Video.findById(videoId).populate("uploadedBy", "name email");
@@ -66,10 +58,6 @@ class VideoProcessor {
       this.emitProgress(video, 0, "failed", error.message);
     }
   }
-
-  /**
-   * Analyze video for sensitivity content
-   */
   async analyzeVideo(video) {
     const stages = [
       { progress: 20, message: "Extracting video metadata..." },
@@ -90,15 +78,11 @@ class VideoProcessor {
     }
 
     const sensitivityResult = this.mockSensitivityAnalysis(video);
-    
-    // Get real video duration if FFmpeg available
     let duration = this.calculateDuration(video);
     if (this.ffmpegAvailable) {
       const realDuration = await getVideoDuration(video.filepath);
       if (realDuration > 0) duration = realDuration;
     }
-    
-    // Generate real thumbnail if FFmpeg available, otherwise use placeholder
     let thumbnail = this.generatePlaceholderThumbnail(video);
     if (this.ffmpegAvailable) {
       const realThumbnail = await generateThumbnailDataUrl(video.filepath, video._id.toString());
@@ -118,29 +102,17 @@ class VideoProcessor {
 
     console.log(`Completed processing: ${video.title} - Status: ${sensitivityResult}`);
   }
-
-  /**
-   * Mock sensitivity analysis (80% safe, 20% flagged)
-   */
   mockSensitivityAnalysis(video) {
     if (video.title.toLowerCase().includes("test")) {
       return "safe";
     }
     return Math.random() > 0.2 ? "safe" : "flagged";
   }
-
-  /**
-   * Calculate video duration based on file size
-   */
   calculateDuration(video) {
     const sizeMB = video.size / (1024 * 1024);
     const estimatedDuration = Math.floor(sizeMB / 2);
     return Math.max(10, Math.min(estimatedDuration, 3600));
   }
-
-  /**
-   * Generate placeholder SVG thumbnail (fallback when FFmpeg not available)
-   */
   generatePlaceholderThumbnail(video) {
     const gradients = [
       { start: '#0ea5e9', end: '#3b82f6' }, // Blue
@@ -171,10 +143,6 @@ class VideoProcessor {
     
     return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
   }
-
-  /**
-   * Emit progress update via Socket.io
-   */
   emitProgress(video, progress, status, message, sensitivityStatus = null) {
     if (!this.io) return;
 

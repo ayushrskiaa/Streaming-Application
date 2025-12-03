@@ -20,7 +20,6 @@ const userSchema = new Schema(
       type: String,
       required: true,
     },
-    // Simple tenant identifier; can be an org ID or slug
     tenantId: {
       type: String,
       required: true,

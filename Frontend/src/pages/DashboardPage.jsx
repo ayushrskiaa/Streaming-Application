@@ -16,7 +16,6 @@ export function DashboardPage() {
   const [filter, setFilter] = useState("all");
   const [error, setError] = useState(null);
 
-  // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [videoFile, setVideoFile] = useState(null);

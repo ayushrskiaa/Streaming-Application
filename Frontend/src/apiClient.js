@@ -1,7 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 if (!API_BASE_URL) {
-  // eslint-disable-next-line no-console
   console.warn("VITE_API_URL is not set. Please configure it in your frontend .env file.");
 }
 

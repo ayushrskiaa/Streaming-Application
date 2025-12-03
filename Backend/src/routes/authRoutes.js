@@ -20,8 +20,6 @@ const createToken = (user) => {
     { expiresIn: JWT_EXPIRES_IN }
   );
 };
-
-// POST /auth/register
 router.post("/register", async (req, res, next) => {
   try {
     const { name, email, password, tenantId, role } = req.body;
@@ -60,8 +58,6 @@ router.post("/register", async (req, res, next) => {
     next(err);
   }
 });
-
-// POST /auth/login
 router.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -95,8 +91,6 @@ router.post("/login", async (req, res, next) => {
     next(err);
   }
 });
-
-// GET /auth/me
 router.get("/me", authMiddleware, (req, res) => {
   const user = req.user;
   res.json({
