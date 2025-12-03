@@ -1,26 +1,17 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/User.js";
 
-/**
- * Auth middleware that supports both header and query token
- * Useful for streaming endpoints where query params are easier than headers
- */
 export const streamAuthMiddleware = async (req, res, next) => {
   try {
     const JWT_SECRET = process.env.JWT_SECRET;
     const authHeader = req.headers.authorization;
     let token = null;
 
-    // Try to get token from Authorization header first
     if (authHeader && authHeader.startsWith("Bearer ")) {
       token = authHeader.split(" ")[1];
-    } 
-    // Then try query parameter (for direct video links)
-    else if (req.query.token) {
+    } else if (req.query.token) {
       token = req.query.token;
-    } 
-    // Finally try cookies
-    else if (req.cookies && req.cookies.token) {
+    } else if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
     }
 

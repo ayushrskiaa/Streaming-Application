@@ -15,7 +15,7 @@ class VideoProcessor {
     if (this.ffmpegAvailable) {
       console.log("✓ FFmpeg is available - using real video thumbnails");
     } else {
-      console.log("⚠ FFmpeg not found - using placeholder thumbnails");
+      console.log(" FFmpeg not found - using placeholder thumbnails");
       console.log("  Install FFmpeg: https://ffmpeg.org/download.html");
     }
   }
